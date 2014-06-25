@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+<data>
+
+        <record id="view_purchase_order_import" model="ir.ui.view">
+              <field name="name">Importar Pedidos</field>
+              <field name="model">po.import</field>
+              <field name="type">form</field>
+              <field name="arch" type="xml">
+                <form string="Importar Pedidos" version="7.0">
+                    <group string="Importar Pedidos">
+                        <!-- field name="filename_po"/ -->
+                        <field name="filename_purchase_order"/>
+                        <field name="first_row_column"/>
+                    </group>
+                    <footer>
+                        <button name="po_import" string="Importar"  type="object" class="oe_highlight"/>
+			or
+                        <button string="Cancel" class="oe_link" special="cancel" />
+                    </footer>
+		</form>
+	      </field>
+	</record>
+
+    <record id="action_po_import" model="ir.actions.act_window">
+        <field name="name">PO_Import</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="src_model">purchase.order</field>
+        <field name="res_model">po.import</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record model="ir.values" id="action_value_import_po">
+        <field name="name">Importar POs</field>
+        <field name="key2">client_action_multi</field>
+        <field name="value" eval="'ir.actions.act_window,' +str(ref('action_po_import'))" />
+        <field name="key">action</field>
+        <field name="model">purchase.order</field>
+    </record>
+
+
+</data>
+</openerp>

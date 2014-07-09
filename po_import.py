@@ -73,7 +73,7 @@ class purchase_order_import(osv.osv_memory):
 		
 				supplier_id = self.pool.get('res.partner').search(cr,uid,[('name','=',supplier_name)])	
 				if not supplier_id:
-					raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el proveedor "+supplier_isbn))
+					raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el proveedor "+supplier_name))
 					return {'type': 'ir.actions.act_window_close'}
 				supplier_id = supplier_id[0]
 				product_id = self.pool.get('product.product').search(cr,uid,[('ean13','=',isbn)])	
@@ -105,6 +105,7 @@ class purchase_order_import(osv.osv_memory):
 			'invoice_method': 'manual',
 			'date_order': str(date.today()),
 			'pricelist_id': 1,
+			'location_id': 1,
 			}
 		po_id = self.pool.get('purchase.order').create(cr,uid,vals_po)
 		for product_key in dict_orders[key].keys():

@@ -40,6 +40,12 @@
         <field name="model">purchase.order</field>
     </record>
 
+	<menuitem
+		name="PO Import"
+		id="menu_po_import"
+		parent="purchase.menu_procurement_management_product"
+		action="action_po_import" />
+
 
 </data>
 </openerp>

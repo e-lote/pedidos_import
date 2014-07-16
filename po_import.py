@@ -89,12 +89,14 @@ class purchase_order_import(osv.osv_memory):
 					raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el producto/supplier."))
 					return {'type': 'ir.actions.act_window_close'}
 				product_supplier_obj = self.pool.get('product.supplierinfo').browse(cr,uid,product_supplier_id)
+				quantity_boxes = product_supplier_obj[0].carton_quantity
 				if supplier_id not in dict_orders.keys():
 					dict_orders[supplier_id] = {}
 				if product_id not in dict_orders[supplier_id].keys():
-					dict_orders[supplier_id][product_id] = [cantidad,product_supplier_obj[0].supplier_price]
+					dict_orders[supplier_id][product_id] = [cantidad , \
+							product_supplier_obj[0].supplier_price]
 				else:
-					dict_orders[supplier_id][product_id] = [dict_orders[supplier_id][product_id][0] + cantidad,\
+					dict_orders[supplier_id][product_id] = [dict_orders[supplier_id][product_id][0] + cantidad, \
 											product_supplier_obj[0].supplier_price]
 			
 			
@@ -116,7 +118,8 @@ class purchase_order_import(osv.osv_memory):
 				'date_planned': str(date.today()),
 				'order_id': po_id,
 				'product_uom': 1,
-				'product_qty': dict_orders[key][product_key][0],
+				'product_qty': 1,
+				'boxes': dict_orders[key][product_key][0],
 				'price_unit': dict_orders[key][product_key][1],
 				}
 			line_id = self.pool.get('purchase.order.line').create(cr,uid,vals_po_line)

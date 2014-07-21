@@ -86,7 +86,8 @@ class purchase_order_import(osv.osv_memory):
 					('product_tmpl_id','=',tmpl_id)])
 				product_id = product_id[0]
 				if not product_supplier_id:
-					raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el producto/supplier."))
+					raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el producto/supplier.\n"\
+						+supplier_name+"\n"+isbn))
 					return {'type': 'ir.actions.act_window_close'}
 				product_supplier_obj = self.pool.get('product.supplierinfo').browse(cr,uid,product_supplier_id)
 				quantity_boxes = product_supplier_obj[0].carton_quantity

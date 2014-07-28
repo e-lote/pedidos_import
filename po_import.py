@@ -71,7 +71,9 @@ class purchase_order_import(osv.osv_memory):
 				isbn = cadena[2]
 				cantidad = int(cadena[3].replace('\n',''))
 		
-				supplier_id = self.pool.get('res.partner').search(cr,uid,[('name','=',supplier_name)])	
+				supplier_id = self.pool.get('res.partner').search(cr,uid,[('name','=',supplier_name)])
+				if not supplier_id:
+					supplier_id = self.pool.get('res.partner').search(cr,uid,[('ref','=',supplier_name)])	
 				if not supplier_id:
 					raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el proveedor "+supplier_name))
 					return {'type': 'ir.actions.act_window_close'}

@@ -60,7 +60,7 @@ class purchase_order_import(osv.osv_memory):
 	#	raise osv.except_osv(_('Error!'), _("No se puede leer el archivo indicado!!!"))
 	#	return {'type': 'ir.actions.act_window_close'}
 
-	lines = file.readlines()
+	# lines = file.readlines()
 	index = 1
 	dict_orders = {}	
 	for line in lines:

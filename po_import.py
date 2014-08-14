@@ -51,14 +51,14 @@ class purchase_order_import(osv.osv_memory):
 		raise osv.except_osv(_('Error!'), _("Debe ingresar un archivo a importar!!!"))
 		return {'type': 'ir.actions.act_window_close'}
 
-	#file=base64.decodestring(filename_po)
-	#lines=file.split('\n')
+	file=base64.decodestring(filename_po)
+	lines=file.split('\n')
 
-	try:
-        	file = open(filename_po,'r')   # Trying to create a new file or open one
-	except:
-		raise osv.except_osv(_('Error!'), _("No se puede leer el archivo indicado!!!"))
-		return {'type': 'ir.actions.act_window_close'}
+	#try:
+        #	file = open(filename_po,'r')   # Trying to create a new file or open one
+	#except:
+	#	raise osv.except_osv(_('Error!'), _("No se puede leer el archivo indicado!!!"))
+	#	return {'type': 'ir.actions.act_window_close'}
 
 	lines = file.readlines()
 	index = 1

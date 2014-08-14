@@ -28,7 +28,7 @@
     'images': [],
     'depends': ['base','purchase'],
     'demo': [],
-    'data': ['po_import_view.xml','forecast_export_view.xml'],
+    'data': ['po_import_view.xml'],
     # 'data': [],
     'test': [],
     'installable': True,

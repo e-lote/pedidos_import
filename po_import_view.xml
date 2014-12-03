@@ -9,9 +9,8 @@
               <field name="arch" type="xml">
                 <form string="Importar Pedidos" version="7.0">
                     <group string="Importar Pedidos">
-                        <!-- field name="filename_po"/ -->
                         <field name="filename_purchase_order"/>
-                        <field name="lote_id"/>
+                        <field name="lote_id" widget="selection"/>
                         <field name="first_row_column"/>
                     </group>
                     <footer>

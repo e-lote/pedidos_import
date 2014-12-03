@@ -3,7 +3,7 @@
 <data>
 
         <record id="view_purchase_order_import" model="ir.ui.view">
-              <field name="name">Importar Pedidos</field>
+              <field name="name">Import Purchase Orders</field>
               <field name="model">po.import</field>
               <field name="type">form</field>
               <field name="arch" type="xml">
@@ -11,6 +11,7 @@
                     <group string="Importar Pedidos">
                         <!-- field name="filename_po"/ -->
                         <field name="filename_purchase_order"/>
+                        <field name="lote_id"/>
                         <field name="first_row_column"/>
                     </group>
                     <footer>
@@ -23,7 +24,7 @@
 	</record>
 
     <record id="action_po_import" model="ir.actions.act_window">
-        <field name="name">PO_Import</field>
+        <field name="name">Import Purchase Orders</field>
         <field name="type">ir.actions.act_window</field>
         <field name="src_model">purchase.order</field>
         <field name="res_model">po.import</field>
@@ -33,7 +34,7 @@
     </record>
 
     <record model="ir.values" id="action_value_import_po">
-        <field name="name">Importar POs</field>
+        <field name="name">Import Purchase Orders</field>
         <field name="key2">client_action_multi</field>
         <field name="value" eval="'ir.actions.act_window,' +str(ref('action_po_import'))" />
         <field name="key">action</field>
@@ -41,7 +42,7 @@
     </record>
 
 	<menuitem
-		name="PO Import"
+		name="Import PO"
 		id="menu_po_import"
 		parent="purchase.menu_procurement_management_product"
 		action="action_po_import" />

@@ -23,6 +23,8 @@ from openerp.osv import fields, osv
 from openerp.tools.translate import _
 from datetime import date
 from openerp import netsvc
+from StringIO import StringIO
+import csv
 import base64
 
 
@@ -30,95 +32,103 @@ class purchase_order_import(osv.osv_memory):
     _name = 'po.import'
     _description = 'Importa pedidos'
 
+    def _default_lote(self, cr, uid, ids, context=None):
+        lote_obj = self.pool.get('elote.lote')
+        lote_open_ids = lote_obj.search(cr, uid, [('state','=','open')])
+        return lote_open_ids and lote_open_ids[0] or False
+
     _columns = {
-        # 'filename_po': fields.char('Filename', required=True),
-        'filename_purchase_order': fields.binary(string='PO Filename'),
+        'filename_purchase_order': fields.binary(string='PO Filename', required=True),
+        'lote_id': fields.many2one('elote.lote', string='Lote', domain="[('state','=','open')]", required=True),
         'first_row_column': fields.boolean('1st Row Column Names'),
     }
 
     _defaults = {
+        'lote_id': _default_lote,
         'first_row_column': True,
         }
 
     def po_import(self, cr, uid, ids, context=None):
+        partner_obj = self.pool.get('res.partner')
+        user_obj = self.pool.get('res.users')
+        product_obj = self.pool.get('product.product')
+        po_obj = self.pool.get('purchase.order')
 
-        res = self.read(cr,uid,ids,['filename_purchase_order'])
-        filename_po = res[0]['filename_purchase_order']
-        res_first_row = self.read(cr,uid,ids,['first_row_column'])
-        first_row = res_first_row[0]['first_row_column']
+        for wiz in self.browse(cr, uid, ids):
+            ss = StringIO(base64.b64decode(wiz.filename_purchase_order))
+            ireader = csv.reader(ss)
 
-        if not filename_po:
-                raise osv.except_osv(_('Error!'), _("Debe ingresar un archivo a importar!!!"))
-                return {'type': 'ir.actions.act_window_close'}
+            # Ignore first line
+            if wiz.first_row_column:
+                s = ireader.next()
+                if len(s) != 4:
+                    raise osv.except_osv(_('Error!'), _("File must have 4 columns: Supplier,Delver to,ISBN, Quantity"))
 
-        file=base64.decodestring(filename_po)
-        lines=file.split('\n')
+            # Storage for each purchase order for each partner
+            vals = {}
 
-        index = 1
-        dict_orders = {}
-        for line in lines:
-                if ((index > 1 and first_row) or (index > 0 and not first_row)):
-                        cadena = line.split(',')
-                        if len(cadena)==4:
-                                supplier_name = cadena[0]
-                                isbn = cadena[2]
-                                cantidad = int(cadena[3].replace('\n',''))
-                
-                                supplier_id = self.pool.get('res.partner').search(cr,uid,[('name','=',supplier_name)])
-                                if not supplier_id:
-                                        supplier_id = self.pool.get('res.partner').search(cr,uid,[('ref','=',supplier_name)])        
-                                if not supplier_id:
-                                        raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el proveedor "+supplier_name))
-                                        return {'type': 'ir.actions.act_window_close'}
-                                supplier_id = supplier_id[0]
-                                product_id = self.pool.get('product.product').search(cr,uid,[('ean13','=',isbn)])        
-                                if not product_id:
-                                        raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el producto "+isbn))
-                                        return {'type': 'ir.actions.act_window_close'}
-                                product_obj = self.pool.get('product.product').browse(cr,uid,product_id)
-                                tmpl_id = product_obj[0].product_tmpl_id.id
-                                product_supplier_id = self.pool.get('product.supplierinfo').search(cr,uid,[('name','=',supplier_id),\
-                                        ('product_tmpl_id','=',tmpl_id)])
-                                product_id = product_id[0]
-                                if not product_supplier_id:
-                                        raise osv.except_osv(_('Error!'), _("Linea "+str(index)+" .No se encuentra el producto/supplier.\n"\
-                                                +supplier_name+"\n"+isbn))
-                                        return {'type': 'ir.actions.act_window_close'}
-                                product_supplier_obj = self.pool.get('product.supplierinfo').browse(cr,uid,product_supplier_id)
-                                quantity_boxes = product_supplier_obj[0].carton_quantity
-                                if supplier_id not in dict_orders.keys():
-                                        dict_orders[supplier_id] = {}
-                                if product_id not in dict_orders[supplier_id].keys():
-                                        dict_orders[supplier_id][product_id] = [cantidad , \
-                                                        product_supplier_obj[0].supplier_price]
-                                else:
-                                        dict_orders[supplier_id][product_id] = [dict_orders[supplier_id][product_id][0] + cantidad, \
-                                                                                        product_supplier_obj[0].supplier_price]
-                index += 1
-        for key in dict_orders.keys():
-                vals_po = {
-                        'partner_id': key,
+            # Read all lines
+            for row in ireader:
+                # Check column count
+                if len(row) != 4:
+                    raise osv.except_osv(_('Error!'), _("Line %s: File must have 4 columns: Supplier,Delver to,ISBN, Quantity.") % ireader.line_num)
+
+                # Translate values
+                supplier_name, delivery_to, isbn, quantity = row
+                partner_id = (partner_obj.search(cr, uid, ['|',('name','=',supplier_name),('ref','=',supplier_name)])+
+                              [False])[0]
+                product_id = (product_obj.search(cr, uid, [('ean13','=',isbn)], context={'search_default_elote_id': wiz.lote_id.id,
+                                                                                         'search_default_partner_id': partner_id})+
+                              [False])[0]
+                user_id = (user_obj.search(cr, uid, [('id','in',[u.id for u in wiz.lote_id.user_ids]), '|',
+                                                     '|',('partner_id.name','=',delivery_to),('partner_id.ref','=',delivery_to),
+                                                     '|',('partner_id.parent_id.name','=',delivery_to),('partner_id.parent_id.ref','=',delivery_to)])+
+                              [False])[0]
+                quantity = int(quantity) if unicode(quantity).isnumeric() and int(quantity) > 0 else False
+
+                # Check values
+                if not(partner_id and user_id and product_id and quantity):
+                    raise osv.except_osv(_('Error!'), _("Line %s: Input (%s,%s,%s,%s) has interpreted as (%s,%s,%s,%s).") %
+                                         (ireader.line_num, supplier_name, delivery_to, isbn, quantity,
+                                          partner_id or 'Not found', user_id or 'Not found', product_id or 'Not found', quantity or 'Not positive integer, or cero'))
+
+                # Create purchase order line
+                line_vals = {
+                    'product_id': product_id,
+                    'name': product_obj.browse(cr, uid, product_id).name,
+                    'date_planned': str(date.today()),
+                    'boxes': quantity,
+                }
+
+                # Build values for purchase order for each partner.
+                if partner_id in vals:
+                    # Exists purchase order, add product.
+                    vals[partner_id]['order_line'].append((0,0,line_vals))
+                else:
+                    # Not exists purchase order, create one.
+                    vals[partner_id] = {
+                        'partner_id': partner_id,
+                        'responsible_id': user_id,
                         'invoice_method': 'manual',
                         'date_order': str(date.today()),
                         'pricelist_id': 1,
                         'location_id': 1,
-                        }
-                po_id = self.pool.get('purchase.order').create(cr,uid,vals_po)
-                for product_key in dict_orders[key].keys():
-                        product_obj = self.pool.get('product.product').browse(cr,uid,product_key)
-                        vals_po_line = {
-                                'product_id': product_key,
-                                'name': product_obj.name,
-                                'date_planned': str(date.today()),
-                                'order_id': po_id,
-                                'product_uom': 1,
-                                'product_qty': 1,
-                                'boxes': dict_orders[key][product_key][0],
-                                'price_unit': dict_orders[key][product_key][1],
-                                }
-                        line_id = self.pool.get('purchase.order.line').create(cr,uid,vals_po_line)
+                        'order_line': [(0,0,line_vals)]
+                    }
 
-        return {}
+            # Create PO in database.
+            po_ids =  [ po_obj.create(cr, uid, po) for po in vals.values() ]
+
+            return {
+                'name': _('Purchase order'),
+                'domain': [('id', 'in', po_ids)],
+                'res_model': 'purchase.order',
+                'type': 'ir.actions.act_window',
+                'view_id': False,
+                'view_mode': 'tree,form',
+                'view_type': 'form',
+                'limit': 80,
+            }
 
 purchase_order_import()
 

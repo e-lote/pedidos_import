@@ -52,6 +52,7 @@ class purchase_order_import(osv.osv_memory):
         partner_obj = self.pool.get('res.partner')
         user_obj = self.pool.get('res.users')
         product_obj = self.pool.get('product.product')
+        supplierinfo_obj = self.pool.get('product.supplierinfo')
         po_obj = self.pool.get('purchase.order')
 
         for wiz in self.browse(cr, uid, ids):
@@ -83,7 +84,7 @@ class purchase_order_import(osv.osv_memory):
                 user_id = (user_obj.search(cr, uid, [('id','in',[u.id for u in wiz.lote_id.user_ids]), '|',
                                                      '|',('partner_id.name','=',delivery_to),('partner_id.ref','=',delivery_to),
                                                      '|',('partner_id.parent_id.name','=',delivery_to),('partner_id.parent_id.ref','=',delivery_to)])+
-                              [False])[0]
+                              [False])[0] if uid == 1 else uid
                 quantity = int(quantity) if unicode(quantity).isnumeric() and int(quantity) > 0 else False
 
                 # Check values
@@ -92,12 +93,27 @@ class purchase_order_import(osv.osv_memory):
                                          (ireader.line_num, supplier_name, delivery_to, isbn, quantity,
                                           partner_id or 'Not found', user_id or 'Not found', product_id or 'Not found', quantity or 'Not positive integer, or cero'))
 
+                supplierinfo_id = (supplierinfo_obj.search(cr, uid, [('lote_id','=',wiz.lote_id.id),
+                                                                     ('name','=',partner_id),
+                                                                     ('product_tmpl_id.product_variant_ids','in',product_id)])
+                                   +[False])[0]
+                if not supplierinfo_id:
+                    raise osv.except_osv(_('Error!'), _("Line %s: No price information about %s (%s) for the supplier '%s' in lote '%s'.") %
+                                         (ireader.line_num,
+                                          isbn,
+                                          product_obj.browse(cr, uid, product_id).name,
+                                          partner_obj.browse(cr, uid, partner_id).name,
+                                          wiz.lote_id.name))
+                supplierinfo = supplierinfo_obj.browse(cr, uid, supplierinfo_id)
+
                 # Create purchase order line
                 line_vals = {
                     'product_id': product_id,
                     'name': product_obj.browse(cr, uid, product_id).name,
                     'date_planned': str(date.today()),
                     'boxes': quantity,
+                    'price_unit': supplierinfo.supplier_price,
+                    'product_qty': supplierinfo.carton_quantity * quantity,
                 }
 
                 # Build values for purchase order for each partner.
